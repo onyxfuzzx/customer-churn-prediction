@@ -1,11 +1,11 @@
 
-# 💡 Customer Churn Prediction & Web App
+#  Customer Churn Prediction & Web App
 
 An end-to-end machine learning project that predicts customer churn for a telecommunications company. This repository includes a detailed Jupyter Notebook for data analysis and model training, as well as a **Flask web application** that serves the trained model through an interactive user interface.
 
 ---
 
-## 🚀 Live Demo & Screenshot
+##  Live Demo & Screenshot
 
 The project is deployed as a web application where users can input customer details and receive **real-time churn predictions**.
 
@@ -16,15 +16,15 @@ The project is deployed as a web application where users can input customer deta
 
 ---
 
-## ✨ Key Features
+##  Key Features
 
-* **🖥️ Interactive Web Interface**
+* **Interactive Web Interface**
   A clean and user-friendly form built using **Flask** and styled with **Tailwind CSS**.
 
-* **📊 Detailed Data Analysis**
+* **Detailed Data Analysis**
   The `customer_churn_pred.ipynb` notebook offers rich exploratory data analysis (EDA) to uncover business insights.
 
-* **🤖 Robust Model Training**
+* **Robust Model Training**
   Multiple models were evaluated, and a **Random Forest Classifier** was selected as the final model.
 
 * **⚖️ Class Imbalance Handling**
