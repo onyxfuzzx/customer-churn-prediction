@@ -6,8 +6,10 @@ An end-to-end machine learning project that predicts whether a telecom customer 
 
 ## Screenshots
 
-<img width="1911" height="910" alt="image" src="https://github.com/user-attachments/assets/b7fe09d5-f204-4418-abae-b353776baf24" />
-<img width="1908" height="909" alt="image" src="https://github.com/user-attachments/assets/fac9e978-b5bf-4b44-beb3-344bad308a75" />
+<img width="1919" height="944" alt="image" src="https://github.com/user-attachments/assets/0cc33d81-ab3c-4396-a1f8-e8f08a11d6d0" />
+<img width="1919" height="948" alt="image" src="https://github.com/user-attachments/assets/ca763ce5-7682-427a-93e1-3e562b85ec22" />
+<img width="1919" height="948" alt="image" src="https://github.com/user-attachments/assets/a49bd6f9-37f9-4e21-b9be-2ab351201d64" />
+
 
 ---
 
