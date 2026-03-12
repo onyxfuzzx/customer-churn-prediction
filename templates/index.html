@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Churn Prediction</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom select arrow */
+        .form-select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        /* Disabled state */
+        select:disabled, input:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        /* Range slider styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.15);
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #818cf8;
+            cursor: pointer;
+            border: 3px solid #312e81;
+            box-shadow: 0 0 8px rgba(129,140,248,0.4);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #818cf8;
+            cursor: pointer;
+            border: 3px solid #312e81;
+            box-shadow: 0 0 8px rgba(129,140,248,0.4);
+        }
+        /* SVG gauge animation */
+        .gauge-arc {
+            transition: stroke-dasharray 1.2s ease-out;
+        }
+        /* Fade-in animation */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.6s ease-out; }
+        .animate-fade-in-delay { animation: fadeInUp 0.6s ease-out 0.2s both; }
+        /* Pulse for high risk */
+        @keyframes pulse-soft {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.3); }
+            50% { box-shadow: 0 0 20px 5px rgba(239,68,68,0.15); }
+        }
+        .pulse-danger { animation: pulse-soft 2s ease-in-out infinite; }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 font-sans">
+
+    <!-- ═══════════════ HEADER ═══════════════ -->
+    <header class="pt-10 pb-2 text-center px-4 animate-fade-in">
+        <div class="inline-flex items-center gap-2 bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-medium px-3 py-1 rounded-full mb-4">
+            <span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+            AI Model Active
+        </div>
+        <h1 class="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">
+            Customer Churn<br class="sm:hidden"> Predictor
+        </h1>
+        <p class="text-indigo-300/70 mt-3 text-sm sm:text-base max-w-lg mx-auto">
+            Enter customer details to predict the likelihood of churn using our trained ensemble model.
+        </p>
+        <div class="mt-5 flex flex-wrap justify-center gap-2 text-xs">
+            <span class="bg-white/10 backdrop-blur text-indigo-200 px-3 py-1.5 rounded-full border border-white/10">
+                Model: <strong>{{ model_name }}</strong>
+            </span>
+            <span class="bg-white/10 backdrop-blur text-indigo-200 px-3 py-1.5 rounded-full border border-white/10">
+                Accuracy: <strong>{{ '%.1f'|format(model_accuracy * 100) }}%</strong>
+            </span>
+            <span class="bg-white/10 backdrop-blur text-indigo-200 px-3 py-1.5 rounded-full border border-white/10">
+                AUC: <strong>{{ '%.3f'|format(model_auc) }}</strong>
+            </span>
+        </div>
+    </header>
+
+    <div class="max-w-5xl mx-auto px-4 py-8">
+
+        <!-- ═══════════════ ERROR MESSAGE ═══════════════ -->
+        {% if error_message %}
+        <div class="mb-8 p-4 rounded-xl bg-red-500/20 border border-red-400/30 backdrop-blur animate-fade-in">
+            <div class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+                <div>
+                    <p class="text-red-300 font-semibold text-sm">Input Error</p>
+                    <p class="text-red-200/80 text-sm mt-0.5">{{ error_message }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ═══════════════ PREDICTION RESULT ═══════════════ -->
+        {% if prediction %}
+        <div id="result-section" class="mb-10 animate-fade-in
+            {% if prediction == 'Churn' %} pulse-danger {% endif %}">
+            <div class="rounded-2xl p-6 sm:p-8 backdrop-blur-xl border
+                {% if prediction == 'Churn' %}
+                    bg-red-500/10 border-red-400/30
+                {% else %}
+                    bg-emerald-500/10 border-emerald-400/30
+                {% endif %}">
+
+                <!-- Gauge -->
+                <div class="flex flex-col items-center">
+                    <svg viewBox="0 0 200 115" class="w-52 sm:w-60">
+                        <defs>
+                            <linearGradient id="gauge-green" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#22c55e"/>
+                                <stop offset="100%" stop-color="#4ade80"/>
+                            </linearGradient>
+                            <linearGradient id="gauge-yellow" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#f59e0b"/>
+                                <stop offset="100%" stop-color="#fbbf24"/>
+                            </linearGradient>
+                            <linearGradient id="gauge-red" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#ef4444"/>
+                                <stop offset="100%" stop-color="#f87171"/>
+                            </linearGradient>
+                        </defs>
+                        <!-- Background arc -->
+                        <path d="M 20 105 A 80 80 0 0 1 180 105"
+                              fill="none" stroke="rgba(255,255,255,0.08)"
+                              stroke-width="14" stroke-linecap="round"/>
+                        <!-- Threshold marker -->
+                        {% set threshold_angle = threshold * 3.14159 %}
+                        {% set tx = 100 - 80 * (threshold_angle | float).__cos__() if false else 0 %}
+                        <!-- Value arc -->
+                        <path d="M 20 105 A 80 80 0 0 1 180 105"
+                              fill="none"
+                              stroke="{% if probability > 0.6 %}url(#gauge-red){% elif probability > 0.35 %}url(#gauge-yellow){% else %}url(#gauge-green){% endif %}"
+                              stroke-width="14" stroke-linecap="round"
+                              class="gauge-arc"
+                              stroke-dasharray="{{ '%.1f'|format(probability * 251.3) }} 251.3"/>
+                        <!-- Center text -->
+                        <text x="100" y="82" text-anchor="middle" fill="white"
+                              font-size="32" font-weight="800" font-family="Inter, sans-serif">
+                            {{ '%.1f'|format(probability * 100) }}%
+                        </text>
+                        <text x="100" y="100" text-anchor="middle"
+                              fill="rgba(255,255,255,0.5)"
+                              font-size="11" font-weight="500" font-family="Inter, sans-serif"
+                              letter-spacing="2">
+                            CHURN RISK
+                        </text>
+                    </svg>
+
+                    <!-- Verdict -->
+                    <h2 class="mt-2 text-xl sm:text-2xl font-bold text-center
+                        {% if prediction == 'Churn' %} text-red-400 {% else %} text-emerald-400 {% endif %}">
+                        {% if prediction == 'Churn' %}
+                            &#9888;&#65039; High Risk &mdash; Customer Will Likely Churn
+                        {% else %}
+                            &#10004;&#65039; Low Risk &mdash; Customer Will Likely Stay
+                        {% endif %}
+                    </h2>
+                </div>
+
+                <!-- Stat Cards -->
+                <div class="mt-6 grid grid-cols-3 gap-3 sm:gap-4 animate-fade-in-delay">
+                    <div class="bg-white/5 rounded-xl p-3 sm:p-4 text-center border border-white/10">
+                        <p class="text-[11px] sm:text-xs text-white/50 uppercase tracking-wider font-medium">Probability</p>
+                        <p class="text-lg sm:text-2xl font-bold mt-1
+                            {% if prediction == 'Churn' %} text-red-400 {% else %} text-emerald-400 {% endif %}">
+                            {{ '%.2f'|format(probability * 100) }}%
+                        </p>
+                    </div>
+                    <div class="bg-white/5 rounded-xl p-3 sm:p-4 text-center border border-white/10">
+                        <p class="text-[11px] sm:text-xs text-white/50 uppercase tracking-wider font-medium">Threshold</p>
+                        <p class="text-lg sm:text-2xl font-bold mt-1 text-indigo-300">
+                            {{ '%.1f'|format(threshold * 100) }}%
+                        </p>
+                    </div>
+                    <div class="bg-white/5 rounded-xl p-3 sm:p-4 text-center border border-white/10">
+                        <p class="text-[11px] sm:text-xs text-white/50 uppercase tracking-wider font-medium">Decision</p>
+                        <p class="text-lg sm:text-2xl font-bold mt-1
+                            {% if prediction == 'Churn' %} text-red-400 {% else %} text-emerald-400 {% endif %}">
+                            {{ prediction }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ═══════════════ PREDICTION FORM ═══════════════ -->
+        <form id="churnForm" action="/" method="POST">
+            <div class="bg-white/[0.07] backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden">
+
+                <!-- ── Section 1: Personal Information ── -->
+                <div class="p-6 sm:p-8">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-9 h-9 bg-indigo-500/20 rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white">Personal Information</h3>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <!-- Gender -->
+                        <div>
+                            <label for="gender" class="block text-xs font-medium text-white/60 mb-1.5">Gender</label>
+                            <select id="gender" name="gender" required
+                                class="form-select w-full bg-white/5 text-white border border-white/15 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                        <!-- Senior Citizen -->
+                        <div>
+                            <label for="SeniorCitizen" class="block text-xs font-medium text-white/60 mb-1.5">Senior Citizen</label>
+                            <select id="SeniorCitizen" name="SeniorCitizen" required
+                                class="form-select w-full bg-white/5 text-white border border-white/15 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                <option value="0">No</option>
+                                <option value="1">Yes</option>
+                            </select>
+                        </div>
+                        <!-- Partner -->
+                        <div>
+                            <label for="Partner" class="block text-xs font-medium text-white/60 mb-1.5">Partner</label>
+                            <select id="Partner" name="Partner" required
+                                class="form-select w-full bg-white/5 text-white border border-white/15 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                <option value="No">No</option>
+                                <option value="Yes">Yes</option>
+                            </select>
+                        </div>
+                        <!-- Dependents -->
+                        <div>
+                            <label for="Dependents" class="block text-xs font-medium text-white/60 mb-1.5">Dependents</label>
+                            <select id="Dependents" name="Dependents" required
+                                class="form-select w-full bg-white/5 text-white border border-white/15 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                <option value="No">No</option>
+                                <option value="Yes">Yes</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Divider -->
+                <div class="border-t border-white/[0.06]"></div>
+
+                <!-- ── Section 2: Account Details ── -->
+                <div class="p-6 sm:p-8">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-9 h-9 bg-violet-500/20 rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white">Account Details</h3>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
+                        <!-- Tenure -->
+                        <div class="sm:col-span-2 lg:col-span-3">
+                            <label for="tenure" class="block text-xs font-medium text-white/60 mb-1.5">
+                                Tenure: <span id="tenureValue" class="text-indigo-400 font-bold">0</span> months
+                            </label>
+                            <input type="range" id="tenureSlider" min="0" max="72" value="0" step="1"
+                                class="w-full mb-1">
+                            <div class="flex justify-between text-[10px] text-white/30 px-0.5">
+                                <span>0</span><span>12</span><span>24</span><span>36</span><span>48</span><span>60</span><span>72</span>
+                            </div>
+                            <input type="hidden" id="tenure" name="tenure" value="0">
+                        </div>
+                        <!-- Contract -->
+                        <div>
+                            <label for="Contract" class="block text-xs font-medium text-white/60 mb-1.5">Contract</label>
+                            <select id="Contract" name="Contract" required
+                                class="form-select w-full bg-white/5 text-white border border-white/15 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                <option value="Month-to-month">Month-to-month</option>
+                                <option value="One year">One year</option>
+                                <option value="Two year">Two year</option>
+                            </select>
+                        </div>
+                        <!-- Paperless Billing -->
+                        <div>
+                            <label for="PaperlessBilling" class="block text-xs font-medium text-white/60 mb-1.5">Paperless Billing</label>
+                            <select id="PaperlessBilling" name="PaperlessBilling" required
+                                class="form-select w-full bg-white/5 text-white border border-white/15 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                <option value="No">No</option>
+                                <option value="Yes">Yes</option>
+                            </select>
+                        </div>
+                        <!-- Payment Method -->
+                        <div>
+                            <label for="PaymentMethod" class="block text-xs font-medium text-white/60 mb-1.5">Payment Method</label>
+                            <select id="PaymentMethod" name="PaymentMethod" required
+                                class="form-select w-full bg-white/5 text-white border border-white/15 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                <option value="Bank transfer (automatic)">Bank transfer (automatic)</option>
+                                <option value="Credit card (automatic)">Credit card (automatic)</option>
+                                <option value="Electronic check">Electronic check</option>
+                                <option value="Mailed check">Mailed check</option>
+                            </select>
+                        </div>
+                        <!-- Monthly Charges -->
+                        <div>
+                            <label for="MonthlyCharges" class="block text-xs font-medium text-white/60 mb-1.5">Monthly Charges ($)</label>
+                            <input type="number" step="0.01" id="MonthlyCharges" name="MonthlyCharges" required
+                                min="18" max="120" placeholder="18.00 – 120.00"
+                                class="w-full bg-white/5 text-white border border-white/15 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-white/30">
+                        </div>
+                        <!-- Total Charges -->
+                        <div class="relative">
+                            <label for="TotalCharges" class="block text-xs font-medium text-white/60 mb-1.5">
+                                Total Charges ($)
+                                <button type="button" id="calcTotal" title="Auto-calculate from Monthly Charges × Tenure"
+                                    class="ml-1 text-indigo-400 hover:text-indigo-300 transition-colors text-[10px] font-semibold uppercase">
+                                    [Auto-fill]
+                                </button>
+                            </label>
+                            <input type="number" step="0.01" id="TotalCharges" name="TotalCharges" required
+                                min="0" max="10000" placeholder="Auto or manual entry"
+                                class="w-full bg-white/5 text-white border border-white/15 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-white/30">
+                            <p id="totalHint" class="text-[10px] text-white/30 mt-1 hidden">
+                                Suggested: $<span id="totalSuggested">0.00</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Divider -->
+                <div class="border-t border-white/[0.06]"></div>
+
+                <!-- ── Section 3: Services ── -->
+                <div class="p-6 sm:p-8">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-9 h-9 bg-cyan-500/20 rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.394 9.393c5.857-5.858 15.355-5.858 21.213 0"/>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white">Services</h3>
+                    </div>
+
+                    <!-- Phone Services Sub-group -->
+                    <div class="mb-6">
+                        <p class="text-xs font-medium text-white/40 uppercase tracking-wider mb-3">Phone Services</p>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="PhoneService" class="block text-xs font-medium text-white/60 mb-1.5">Phone Service</label>
+                                <select id="PhoneService" name="PhoneService" required
+                                    class="form-select w-full bg-white/5 text-white border border-white/15 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                    <option value="Yes">Yes</option>
+                                    <option value="No">No</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="MultipleLines" class="block text-xs font-medium text-white/60 mb-1.5">
+                                    Multiple Lines
+                                    <span id="mlTag" class="hidden ml-1 text-[10px] text-amber-400">(No phone service)</span>
+                                </label>
+                                <select id="MultipleLines" name="MultipleLines" required
+                                    class="form-select w-full bg-white/5 text-white border border-white/15 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-opacity">
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="No phone service">No phone service</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Internet Services Sub-group -->
+                    <div>
+                        <p class="text-xs font-medium text-white/40 uppercase tracking-wider mb-3">Internet Services</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <!-- Internet Service -->
+                            <div>
+                                <label for="InternetService" class="block text-xs font-medium text-white/60 mb-1.5">Internet Service</label>
+                                <select id="InternetService" name="InternetService" required
+                                    class="form-select w-full bg-white/5 text-white border border-white/15 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                    <option value="DSL">DSL</option>
+                                    <option value="Fiber optic">Fiber optic</option>
+                                    <option value="No">No</option>
+                                </select>
+                            </div>
+                            <!-- Online Security -->
+                            <div>
+                                <label for="OnlineSecurity" class="block text-xs font-medium text-white/60 mb-1.5">
+                                    Online Security
+                                    <span class="inet-tag hidden ml-1 text-[10px] text-amber-400">(No internet)</span>
+                                </label>
+                                <select id="OnlineSecurity" name="OnlineSecurity" required
+                                    class="inet-dep form-select w-full bg-white/5 text-white border border-white/15 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-opacity">
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="No internet service">No internet service</option>
+                                </select>
+                            </div>
+                            <!-- Online Backup -->
+                            <div>
+                                <label for="OnlineBackup" class="block text-xs font-medium text-white/60 mb-1.5">
+                                    Online Backup
+                                    <span class="inet-tag hidden ml-1 text-[10px] text-amber-400">(No internet)</span>
+                                </label>
+                                <select id="OnlineBackup" name="OnlineBackup" required
+                                    class="inet-dep form-select w-full bg-white/5 text-white border border-white/15 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-opacity">
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="No internet service">No internet service</option>
+                                </select>
+                            </div>
+                            <!-- Device Protection -->
+                            <div>
+                                <label for="DeviceProtection" class="block text-xs font-medium text-white/60 mb-1.5">
+                                    Device Protection
+                                    <span class="inet-tag hidden ml-1 text-[10px] text-amber-400">(No internet)</span>
+                                </label>
+                                <select id="DeviceProtection" name="DeviceProtection" required
+                                    class="inet-dep form-select w-full bg-white/5 text-white border border-white/15 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-opacity">
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="No internet service">No internet service</option>
+                                </select>
+                            </div>
+                            <!-- Tech Support -->
+                            <div>
+                                <label for="TechSupport" class="block text-xs font-medium text-white/60 mb-1.5">
+                                    Tech Support
+                                    <span class="inet-tag hidden ml-1 text-[10px] text-amber-400">(No internet)</span>
+                                </label>
+                                <select id="TechSupport" name="TechSupport" required
+                                    class="inet-dep form-select w-full bg-white/5 text-white border border-white/15 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-opacity">
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="No internet service">No internet service</option>
+                                </select>
+                            </div>
+                            <!-- Streaming TV -->
+                            <div>
+                                <label for="StreamingTV" class="block text-xs font-medium text-white/60 mb-1.5">
+                                    Streaming TV
+                                    <span class="inet-tag hidden ml-1 text-[10px] text-amber-400">(No internet)</span>
+                                </label>
+                                <select id="StreamingTV" name="StreamingTV" required
+                                    class="inet-dep form-select w-full bg-white/5 text-white border border-white/15 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-opacity">
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="No internet service">No internet service</option>
+                                </select>
+                            </div>
+                            <!-- Streaming Movies -->
+                            <div>
+                                <label for="StreamingMovies" class="block text-xs font-medium text-white/60 mb-1.5">
+                                    Streaming Movies
+                                    <span class="inet-tag hidden ml-1 text-[10px] text-amber-400">(No internet)</span>
+                                </label>
+                                <select id="StreamingMovies" name="StreamingMovies" required
+                                    class="inet-dep form-select w-full bg-white/5 text-white border border-white/15 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-opacity">
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="No internet service">No internet service</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Divider -->
+                <div class="border-t border-white/[0.06]"></div>
+
+                <!-- ── Submit ── -->
+                <div class="p-6 sm:p-8">
+                    <button type="submit" id="submitBtn"
+                        class="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500
+                               text-white font-bold py-3.5 px-6 rounded-xl
+                               focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-slate-900
+                               transition-all duration-300 transform hover:scale-[1.01] active:scale-[0.99]
+                               shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40">
+                        <span id="btnText" class="flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                            Predict Churn
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- ═══════════════ FOOTER ═══════════════ -->
+    <footer class="text-center pb-8 pt-4 text-white/30 text-xs">
+        <p>
+            Built with Flask &amp; Scikit-learn &bull;
+            <a href="https://github.com/onyxfuzzx/customer-churn-prediction" class="text-indigo-400/60 hover:text-indigo-300 transition-colors" target="_blank" rel="noopener noreferrer">
+                github.com/onyxfuzzx/customer-churn-prediction
+            </a>
+        </p>
+    </footer>
+
+    <!-- ═══════════════ JAVASCRIPT: SMART FORM LOGIC ═══════════════ -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // ── Elements ──
+        const tenureSlider   = document.getElementById('tenureSlider');
+        const tenureHidden   = document.getElementById('tenure');
+        const tenureValue    = document.getElementById('tenureValue');
+        const phoneService   = document.getElementById('PhoneService');
+        const multipleLines  = document.getElementById('MultipleLines');
+        const mlTag          = document.getElementById('mlTag');
+        const internetSvc    = document.getElementById('InternetService');
+        const inetDeps       = document.querySelectorAll('.inet-dep');
+        const inetTags       = document.querySelectorAll('.inet-tag');
+        const monthlyInput   = document.getElementById('MonthlyCharges');
+        const totalInput     = document.getElementById('TotalCharges');
+        const calcBtn        = document.getElementById('calcTotal');
+        const totalHint      = document.getElementById('totalHint');
+        const totalSuggested = document.getElementById('totalSuggested');
+        const form           = document.getElementById('churnForm');
+
+        // ── Tenure Slider ──
+        function syncTenure() {
+            const val = tenureSlider.value;
+            tenureHidden.value = val;
+            tenureValue.textContent = val;
+            updateTotalHint();
+        }
+        tenureSlider.addEventListener('input', syncTenure);
+        syncTenure();
+
+        // ── Phone Service → Multiple Lines ──
+        function syncPhoneService() {
+            if (phoneService.value === 'No') {
+                multipleLines.value = 'No phone service';
+                multipleLines.disabled = true;
+                mlTag.classList.remove('hidden');
+            } else {
+                multipleLines.disabled = false;
+                if (multipleLines.value === 'No phone service') {
+                    multipleLines.value = 'No';
+                }
+                mlTag.classList.add('hidden');
+            }
+        }
+        phoneService.addEventListener('change', syncPhoneService);
+        syncPhoneService();
+
+        // ── Internet Service → 6 Dependents ──
+        function syncInternetService() {
+            const noInternet = (internetSvc.value === 'No');
+            inetDeps.forEach(function(sel) {
+                if (noInternet) {
+                    sel.value = 'No internet service';
+                    sel.disabled = true;
+                } else {
+                    sel.disabled = false;
+                    if (sel.value === 'No internet service') {
+                        sel.value = 'No';
+                    }
+                }
+            });
+            inetTags.forEach(function(tag) {
+                if (noInternet) { tag.classList.remove('hidden'); }
+                else            { tag.classList.add('hidden'); }
+            });
+        }
+        internetSvc.addEventListener('change', syncInternetService);
+        syncInternetService();
+
+        // ── Total Charges Auto-Suggest ──
+        function getEstimatedTotal() {
+            const tenure  = parseInt(tenureSlider.value) || 0;
+            const monthly = parseFloat(monthlyInput.value) || 0;
+            return (monthly * Math.max(tenure, 1)).toFixed(2);
+        }
+        function updateTotalHint() {
+            const monthly = parseFloat(monthlyInput.value) || 0;
+            if (monthly > 0) {
+                totalSuggested.textContent = getEstimatedTotal();
+                totalHint.classList.remove('hidden');
+            } else {
+                totalHint.classList.add('hidden');
+            }
+        }
+        monthlyInput.addEventListener('input', updateTotalHint);
+        calcBtn.addEventListener('click', function() {
+            totalInput.value = getEstimatedTotal();
+            updateTotalHint();
+        });
+
+        // ── Re-enable disabled fields before submit ──
+        // (Disabled <select> values are NOT submitted with forms)
+        form.addEventListener('submit', function() {
+            document.querySelectorAll('select:disabled').forEach(function(el) {
+                el.disabled = false;
+            });
+        });
+
+        // ── Scroll to result if present ──
+        var resultEl = document.getElementById('result-section');
+        if (resultEl) {
+            resultEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+    </script>
+</body>
+</html>

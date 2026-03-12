@@ -103,10 +103,10 @@ def index():
             total_charges = float(request.form["TotalCharges"])
 
             # Validation
-            if tenure < 0 or tenure > 120:
-                error_message = "Tenure must be between 0 and 120 months."
-            elif monthly_charges <= 0 or monthly_charges > 500:
-                error_message = "Monthly charges must be between $0.01 and $500."
+            if tenure < 0 or tenure > 72:
+                error_message = "Tenure must be between 0 and 72 months."
+            elif monthly_charges < 18 or monthly_charges > 120:
+                error_message = "Monthly charges must be between $18 and $120."
             elif total_charges < 0:
                 error_message = "Total charges cannot be negative."
             else:
@@ -146,6 +146,7 @@ def index():
         error_message=error_message,
         model_name=MODEL_NAME,
         model_accuracy=MODEL_ACC,
+        model_auc=MODEL_AUC,
         threshold=THRESHOLD,
     )
 
