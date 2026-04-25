@@ -1,0 +1,129 @@
+================================================================================
+       CUSTOMER CHURN PREDICTION - HOW TO RUN
+================================================================================
+
+PREREQUISITES
+─────────────
+  - Python 3.9 or higher (https://www.python.org/downloads/)
+  - pip (comes bundled with Python)
+  - Git (optional, for cloning)
+
+
+================================================================================
+STEP 1 : CLONE THE REPOSITORY (skip if you already have it)
+================================================================================
+
+  git clone https://github.com/onyxfuzzx/customer-churn-prediction.git
+  cd customer-churn-prediction
+
+
+================================================================================
+STEP 2 : CREATE A VIRTUAL ENVIRONMENT
+================================================================================
+
+  Windows:
+    python -m venv venv
+    venv\Scripts\activate
+
+  macOS / Linux:
+    python3 -m venv venv
+    source venv/bin/activate
+
+  You should see (venv) at the start of your terminal prompt.
+
+
+================================================================================
+STEP 3 : INSTALL DEPENDENCIES
+================================================================================
+
+  pip install -r requirements.txt
+
+  This installs Flask, Pandas, NumPy, Scikit-learn, XGBoost,
+  imbalanced-learn, Matplotlib, Seaborn, and Jupyter.
+
+
+================================================================================
+STEP 4 : RUN THE WEB APPLICATION
+================================================================================
+
+  python app.py
+
+  Open your browser and go to:
+    http://127.0.0.1:5000
+
+  Fill in the customer details in the form and click "Predict"
+  to see the churn prediction result.
+
+  Press Ctrl+C in the terminal to stop the server.
+
+
+================================================================================
+STEP 5 (OPTIONAL) : RETRAIN THE MODEL
+================================================================================
+
+  python train_model.py
+
+  This runs the full training pipeline:
+    - Loads and cleans the Telco dataset (dataset_telco.csv)
+    - Engineers 10 new features
+    - Trains 5 models + 2 voting ensembles with GridSearchCV
+    - Picks the best model by accuracy
+    - Saves updated .pkl artifacts:
+        best_model.pkl       (trained model)
+        preprocessor.pkl     (scaler + encoder pipeline)
+        feature_config.pkl   (feature lists, threshold, metrics)
+
+  NOTE: Training takes several minutes depending on your hardware.
+
+
+================================================================================
+STEP 6 (OPTIONAL) : EXPLORE THE JUPYTER NOTEBOOK
+================================================================================
+
+  jupyter notebook customer_churn_pred.ipynb
+
+  The notebook contains the full exploratory data analysis (EDA),
+  visualizations, and step-by-step model training walkthrough.
+
+
+================================================================================
+PROJECT STRUCTURE
+================================================================================
+
+  customer-churn-prediction/
+  ├── app.py                     Flask web application
+  ├── train_model.py             Full training pipeline
+  ├── best_model.pkl             Trained model (VotingClassifier)
+  ├── preprocessor.pkl           ColumnTransformer (scaler + encoder)
+  ├── feature_config.pkl         Feature lists, threshold, metrics
+  ├── customer_churn_pred.ipynb  Jupyter Notebook (EDA + training)
+  ├── dataset_telco.csv          Telco Customer Churn dataset
+  ├── requirements.txt           Python dependencies
+  ├── HOW_TO_RUN.txt             This file
+  ├── README.md                  Project documentation
+  └── templates/
+      └── index.html             Web UI template
+
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+  Issue: "ModuleNotFoundError: No module named 'flask'"
+  Fix:   Make sure your virtual environment is activated and
+         you have run: pip install -r requirements.txt
+
+  Issue: "FileNotFoundError: best_model.pkl"
+  Fix:   The .pkl files must be in the project root directory.
+         If missing, retrain with: python train_model.py
+
+  Issue: Port 5000 already in use
+  Fix:   Either stop the other process using port 5000, or
+         change the port in app.py:
+           app.run(debug=True, port=5001)
+
+  Issue: "ImportError: cannot import name ..."
+  Fix:   Upgrade packages:
+           pip install --upgrade -r requirements.txt
+
+================================================================================

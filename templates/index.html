@@ -292,7 +292,7 @@
                             <label for="tenure" class="block text-xs font-medium text-white/60 mb-1.5">
                                 Tenure: <span id="tenureValue" class="text-indigo-400 font-bold">0</span> months
                             </label>
-                            <input type="range" id="tenureSlider" min="0" max="72" value="0" step="1"
+                            <input type="range" id="tenureSlider" aria-label="Tenure in months" min="0" max="72" value="0" step="1"
                                 class="w-full mb-1">
                             <div class="flex justify-between text-[10px] text-white/30 px-0.5">
                                 <span>0</span><span>12</span><span>24</span><span>36</span><span>48</span><span>60</span><span>72</span>
@@ -519,9 +519,6 @@
     <footer class="text-center pb-8 pt-4 text-white/30 text-xs">
         <p>
             Built with Flask &amp; Scikit-learn &bull;
-            <a href="https://github.com/onyxfuzzx/customer-churn-prediction" class="text-indigo-400/60 hover:text-indigo-300 transition-colors" target="_blank" rel="noopener noreferrer">
-                github.com/onyxfuzzx/customer-churn-prediction
-            </a>
         </p>
     </footer>
 
